@@ -18,7 +18,7 @@ MINX = MINY = 0
 MAXX = MAXY = 1
 DEFAULT_SIDE = 0.1
 DEFAULT_SAFETY_MARGIN = DEFAULT_SIDE * sqrt(2)
-MAX_SQUARES = 13
+MAX_SQUARES = 8
 
 __global_generation_counter = 0
 
@@ -253,16 +253,16 @@ def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning
     initial_l, pathy = find_path(squares, x0, y0, x1, y1, explore_step)
     for i in range(len(squares)):
         new_squares = list(squares)
-        new_squares[i] = rotate_square(new_squares[i], 1)
+        new_squares[i] = rotate_square(new_squares[i], 0.05)
         new_l, _ = find_path(new_squares, x0, y0, x1, y1, explore_step)
-        partial_derivative[i] = -(new_l - initial_l) * 100
+        partial_derivative[i] = (initial_l ** 5 - new_l ** 5) * 100
     print(partial_derivative)
     return partial_derivative, initial_l, pathy
 
 
 def apply_step(squares, partial_derivative, learning_stepsize = 0.1):
     for i in range(len(squares)):
-        squares[i] = rotate_square(squares[i], partial_derivative[i] * learning_stepsize * 10)
+        squares[i] = rotate_square(squares[i], partial_derivative[i] * learning_stepsize)
 
 
 def rotate_square(square, degrees, rotation_matrix=None):
@@ -277,6 +277,8 @@ def rotate_square(square, degrees, rotation_matrix=None):
 
 
 if __name__ == "__main__":
+    # print(get_rotation_matrix(0.001))
+    # print(get_rotation_matrix(-0.001))
     seed()
     squares = list()
     allow_overlapping = False  # CHANGE to True to allow square to overlap
@@ -289,11 +291,11 @@ if __name__ == "__main__":
         squares.append(square)
 
     max_steps = 100
-    explore_step = 0.01
-    learning_step = 0.3
+    explore_step = 0.003
+    learning_step = 0.8
     history_squares = list()
     history_paths = list()
-    history_step = 5
+    history_step = 1
     prev_path_l = 100
 
     plot_squares = tuple()
@@ -312,15 +314,15 @@ if __name__ == "__main__":
     for i in range(max_steps):
         derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step, learning_step=learning_step)
         print(path_l)
-        if i % history_step:
+        if i % history_step == 0:
             history_squares.append(squares.copy())
             history_paths.append(path.copy())
-        if path_l >= prev_path_l:
-            history_squares.append(squares.copy())
-            history_paths.append(path.copy())
-            break
-        else:
-            prev_path_l = path_l
+        # if path_l >= prev_path_l:
+        #     history_squares.append(squares.copy())
+        #     history_paths.append(path.copy())
+        #     break
+        # else:
+        #     prev_path_l = path_l
         apply_step(squares, derivatives, learning_step)
 
 
@@ -374,7 +376,7 @@ if __name__ == "__main__":
         return [graph_squares, graphog]
 
 
-    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=10)
+    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=20, repeat_delay=1000)
     plt.show()
 
     # n = 14
