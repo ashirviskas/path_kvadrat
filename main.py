@@ -4,11 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from random import random, seed
 from math import pi, sin, cos, sqrt
-import matplotlib.pyplot as plt
 
 """Generuojamos figūros plokštumoje. Iš taško x0, y0 reikia rasti kelią į x1, y1. Sukioti figūras taip, kad kelias būtų trumpiausias."""
 
-# rotation_matrixes = np.array((2, 2, 2))
 
 
 
@@ -187,67 +185,77 @@ def segment_intersect(line1, line2):
             # print('exit 4')
             return None
 
-    return intersection_pt
+    return np.array(intersection_pt)
 
 
-def get_square_trace_vector(current_point, next_point, direction_v, square):
-    walls = list()
-    walls.append((square[0], square[1]))
-    walls.append((square[1], square[2]))
-    walls.append((square[2], square[3]))
-    walls.append((square[3], square[0]))
+def get_square_trace_vector(current_point, next_point, squares):
+    intersected_walls = list()
+    intersected_points = list()
+    # holds closest intersected point id and point
+    closest_intersected = list()
+    for square_np in squares:
+        walls = np.zeros((4, 2, 2), dtype=np.float64)
+        for i in range(4):
+            walls[i, :, :] = np.array([square_np[i, :], square_np[(i + 1)%4, :]])
+        current_step = (current_point, next_point)
+        for i in range(len(walls)):
+            wall = walls[i]
+            intersect_point = segment_intersect(wall, current_step)
+            if intersect_point is not None:
+                intersected_walls.append(wall)
+                intersected_points.append(intersect_point)
+    for i, point in enumerate(intersected_points):
+        path_len = np.sqrt(np.sum((point - current_point) ** 2))
+        closest_intersected.append(np.array([i, path_len]))
+        # else:
+        #     path_len = np.sqrt(np.sum((point - current_point) ** 2))
+        #     closest_intersected = np.array([i, path_len])
+    closest_intersected.sort(key=lambda x: x[1])
+    if len(closest_intersected) > 0:
+        index = int(closest_intersected[0][0])
+        len1 = np.sqrt(np.sum((intersected_walls[index][0] - current_point) ** 2))
+        len2 = np.sqrt(np.sum((intersected_walls[index][1] - current_point) ** 2))
+        if abs(len1) < 0.001 or abs(len2) < 0.001:
+            index = int(closest_intersected[1][0])
+        new_wall = np.array(intersected_walls[index])
+        direction0 = intersected_points[index] - new_wall[0]
+        direction1 = intersected_points[index] - new_wall[1]
+        new_wall[0] -= direction0 * 0.0001
+        new_wall[1] -= direction1 * 0.0001
+        return intersected_points[index], new_wall
+    else:
+        return next_point, None
 
-    current_step = (current_point, next_point)
-    for i in range(len(walls)):
-        l = walls[i]
-        intersect_point = segment_intersect(l, current_step)
-        if intersect_point is not None:
-            # print(i)
-            direction1 = np.array(intersect_point) - np.array(square[(i + 1) % 4])
-            direction2 = np.array(intersect_point) - np.array(square[i])
-            if not np.sqrt(np.sum((direction1 - direction_v) ** 2)) < np.sqrt(np.sum((direction2 - direction_v) ** 2)):
-                return direction1, intersect_point, np.array(square[(i + 1) % 4])
-            else:
-                return direction2, intersect_point, np.array(square[i])
-    return direction_v, None, None
 
-
-def find_path(squares, x0, y0, x1, y1, step_size=0.001):
-    destination_reached = False
-    path_length = 0
+def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec_d = 0):
+    if x0 == x1 and y0 == y1:
+        return path_length, np.array(path)
+    # print(rec_d)
     current_point = np.array([x0, y0])
     destination_point = np.array([x1, y1])
-    path = list()
     path.append(current_point)
+    intersected_point, wall = get_square_trace_vector(current_point, destination_point, squares)
 
-    while not destination_reached:
+    if wall is not None:
+        path_len_leftest = np.sqrt(np.sum((wall[0] - current_point) ** 2)) + path_length
+        path_len_rightest = np.sqrt(np.sum((wall[1] - current_point) ** 2)) + path_length
 
-        direction_v = destination_point - current_point
-        # vector normalisation
-        direction_v *= (1.0 / float(np.max(direction_v)))
-        next_point = current_point + direction_v * step_size
-        s_intersected = is_point_in_squares((next_point[0], next_point[1]), squares)
-        if s_intersected is not None:
-            # next_point = np.array([current_point[0] + (random() - 0.5) * step_size, current_point[1] + (random() - 0.5) * step_size])
-            square_wall_trace_v, intersect_point, wall_end = get_square_trace_vector(current_point, next_point, direction_v, s_intersected)
-            # next_point -= current_point + direction_v * step_size
-            if intersect_point is not None:
-                next_point = intersect_point #- direction_v * step_size / 100
-                path_length += np.sqrt(np.sum((next_point - current_point) ** 2))
-                path.append(next_point)
-                current_point = next_point
-                next_point = wall_end - square_wall_trace_v * 0.00001
+        path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_leftest, rec_d=rec_d + 1)
+        path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_rightest, rec_d=rec_d+1)
+
+        if path_len_left is not None and path_len_right is not None:
+            if path_len_left < path_len_right:
+                return path_len_left, path_left
             else:
-                next_point = current_point + square_wall_trace_v * step_size
-            # s_intersected = is_point_in_squares((next_point[0], next_point[1]), squares)
-
-
-        path_length += np.sqrt(np.sum((next_point - current_point) ** 2))
-        # print(path_length)
-        path.append(next_point)
-        current_point = next_point
-        if abs(np.sum(current_point - destination_point)) < step_size * 3:
-            destination_reached = True
+                return path_len_right, path_right
+        elif path_len_left is not None and path_len_right is None:
+            return path_len_left, path_left
+        elif path_len_left is None and path_len_right is not None:
+            return path_len_right, path_right
+        else:
+            return None, None
+    path.append(destination_point)
+    path_length += np.sqrt(np.sum((destination_point - current_point) ** 2))
     return path_length, path
 
 
@@ -258,11 +266,11 @@ def get_rotation_matrix(degrees):
 
 def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning_step = 0.1):
     partial_derivative = np.zeros(len(squares))
-    initial_l, pathy = find_path(squares, x0, y0, x1, y1, explore_step)
+    initial_l, pathy = find_path(squares, x0, y0, x1, y1, list())
     for i in range(len(squares)):
-        new_squares = list(squares)
+        new_squares = np.array(squares)
         new_squares[i] = rotate_square(new_squares[i], 0.05)
-        new_l, _ = find_path(new_squares, x0, y0, x1, y1, explore_step)
+        new_l, _ = find_path(new_squares, x0, y0, x1, y1, list())
         partial_derivative[i] = (initial_l ** 5 - new_l ** 5) * 100
     print(partial_derivative)
     return partial_derivative, initial_l, pathy
@@ -270,7 +278,9 @@ def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning
 
 def apply_step(squares, partial_derivative, learning_stepsize = 0.1):
     for i in range(len(squares)):
-        squares[i] = rotate_square(squares[i], partial_derivative[i] * learning_stepsize)
+        d = partial_derivative[i]
+        if d > 0.0:
+            squares[i] = rotate_square(squares[i], d * learning_stepsize)
 
 
 def rotate_square(square, degrees, rotation_matrix=None):
@@ -284,7 +294,8 @@ def rotate_square(square, degrees, rotation_matrix=None):
     return sq_rotated
 
 
-if __name__ == "__main__":
+
+def main():
     # print(get_rotation_matrix(0.001))
     # print(get_rotation_matrix(-0.001))
     seed()
@@ -297,7 +308,7 @@ if __name__ == "__main__":
             square = generate_random_square(squares_to_avoid=squares)
         # square = rotate_square(square, 1)
         squares.append(square)
-
+    squares = np.array(squares)
     max_steps = 500
     explore_step = 0.01
     learning_step = 0.3
@@ -313,14 +324,15 @@ if __name__ == "__main__":
     #                                                                                              allow_overlapping,
     #                                                                                              __global_generation_counter))
     plt.plot(*plot_squares)
-    path_l, path = find_path(squares, 0.0, 0.0, 1.0, 1.0)
+    path_l, path = find_path(squares, 0.0, 0.0, 1.0, 1.0, list())
     print(path_l)
     path = np.array(path)
     plt.plot(path[:, 0], path[:, 1])
     plt.show()
 
     for i in range(max_steps):
-        derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step, learning_step=learning_step)
+        derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step,
+                                                           learning_step=learning_step)
         print(path_l)
         if i % history_step == 0:
             history_squares.append(squares.copy())
@@ -332,7 +344,6 @@ if __name__ == "__main__":
         # else:
         #     prev_path_l = path_l
         apply_step(squares, derivatives, learning_step)
-
 
     # plot_squares = tuple()
     # for sq in squares:
@@ -367,7 +378,7 @@ if __name__ == "__main__":
     # plt.axis([MINX, MAXX, MINY, MAXY])
     ax = plt.axes(xlim=(MINX, MAXX), ylim=(MINY, MAXY))
     graphog, = ax.plot([], [])
-    graph_squares = ax.plot( *([[], []]*MAX_SQUARES))
+    graph_squares = ax.plot(*([[], []] * MAX_SQUARES))
     print(len(history_paths))
 
     def animate(i):
@@ -382,7 +393,6 @@ if __name__ == "__main__":
             # plot_squares += square_to_plot(sq)
             graph_squares[i].set_data(np.append(sq_n[:, 0], sq_n[0, 0]), np.append(sq_n[:, 1], sq_n[0, 1]))
         return [graph_squares, graphog]
-
 
     ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=10, repeat_delay=1000)
     plt.show()
@@ -432,3 +442,5 @@ if __name__ == "__main__":
     # plt.show()
 
 
+if __name__ == "__main__":
+    main()
