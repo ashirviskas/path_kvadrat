@@ -7,9 +7,6 @@ from math import pi, sin, cos, sqrt
 
 """Generuojamos figūros plokštumoje. Iš taško x0, y0 reikia rasti kelią į x1, y1. Sukioti figūras taip, kad kelias būtų trumpiausias."""
 
-
-
-
 pi_2 = pi / 2
 
 MINX = MINY = 0
@@ -25,7 +22,7 @@ def get_func_deg1(p0, p1):
     (x0, y0), (x1, y1) = p0, p1
     if x0 == x1:
         return None
-    a = (y0 - y1)/(x0 - x1)
+    a = (y0 - y1) / (x0 - x1)
     b = y0 - x0 * a
     return lambda x: a * x + b
 
@@ -196,7 +193,7 @@ def get_square_trace_vector(current_point, next_point, squares):
     for square_np in squares:
         walls = np.zeros((4, 2, 2), dtype=np.float64)
         for i in range(4):
-            walls[i, :, :] = np.array([square_np[i, :], square_np[(i + 1)%4, :]])
+            walls[i, :, :] = np.array([square_np[i, :], square_np[(i + 1) % 4, :]])
         current_step = (current_point, next_point)
         for i in range(len(walls)):
             wall = walls[i]
@@ -207,9 +204,6 @@ def get_square_trace_vector(current_point, next_point, squares):
     for i, point in enumerate(intersected_points):
         path_len = np.sqrt(np.sum((point - current_point) ** 2))
         closest_intersected.append(np.array([i, path_len]))
-        # else:
-        #     path_len = np.sqrt(np.sum((point - current_point) ** 2))
-        #     closest_intersected = np.array([i, path_len])
     closest_intersected.sort(key=lambda x: x[1])
     if len(closest_intersected) > 0:
         index = int(closest_intersected[0][0])
@@ -227,11 +221,9 @@ def get_square_trace_vector(current_point, next_point, squares):
         return next_point, None
 
 
-def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec_d = 0):
+def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec_d=0):
     if x0 == x1 and y0 == y1:
         return path_length, np.array(path)
-    # if rec_d > 7:
-    #     return None, None
     current_point = np.array([x0, y0])
     destination_point = np.array([x1, y1])
     path.append(current_point)
@@ -254,8 +246,12 @@ def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec
                                                        rec_d=rec_d + 1)
                 path_len_left, path_left = None, None
         else:
-            path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_leftest, rec_d=rec_d + 1)
-            path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_rightest, rec_d=rec_d+1)
+            path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0],
+                                                   destination_point[1], path.copy(), path_length=path_len_leftest,
+                                                   rec_d=rec_d + 1)
+            path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0],
+                                                 destination_point[1], path.copy(), path_length=path_len_rightest,
+                                                 rec_d=rec_d + 1)
 
         if path_len_left is not None and path_len_right is not None:
             if path_len_left < path_len_right:
@@ -274,11 +270,12 @@ def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec
 
 
 def get_rotation_matrix(degrees):
-    rotation = np.array([[np.cos(pi * degrees / 180), np.sin(pi * degrees / 180)], [- np.sin(pi * degrees / 180), np.cos(pi * degrees / 180)]])
+    rotation = np.array([[np.cos(pi * degrees / 180), np.sin(pi * degrees / 180)],
+                         [- np.sin(pi * degrees / 180), np.cos(pi * degrees / 180)]])
     return rotation
 
 
-def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning_step = 0.1):
+def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning_step=0.1):
     partial_derivative = np.zeros(len(squares))
     initial_l, pathy = find_path(squares, x0, y0, x1, y1, list())
     for i in range(len(squares)):
@@ -290,7 +287,7 @@ def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning
     return partial_derivative, initial_l, pathy
 
 
-def apply_step(squares, partial_derivative, learning_stepsize = 0.1):
+def apply_step(squares, partial_derivative, learning_stepsize=0.1):
     for i in range(len(squares)):
         d = partial_derivative[i]
         if abs(d) > 0.0:
@@ -303,15 +300,12 @@ def rotate_square(square, degrees, rotation_matrix=None):
     if rotation_matrix is None:
         rotation_matrix = get_rotation_matrix(degrees)
     sq_rotated = np.dot(sq - center, rotation_matrix) + center
-    sq_rotated = (sq_rotated[0][0], sq_rotated[0][1]), (sq_rotated[1][0], sq_rotated[1][1]),\
+    sq_rotated = (sq_rotated[0][0], sq_rotated[0][1]), (sq_rotated[1][0], sq_rotated[1][1]), \
                  (sq_rotated[2][0], sq_rotated[2][1]), (sq_rotated[3][0], sq_rotated[3][1])
     return sq_rotated
 
 
-
 def main():
-    # print(get_rotation_matrix(0.001))
-    # print(get_rotation_matrix(-0.001))
     seed()
     squares = list()
     allow_overlapping = False  # CHANGE to True to allow square to overlap
@@ -353,43 +347,8 @@ def main():
         if i % history_step == 0:
             history_squares.append(squares.copy())
             history_paths.append(path.copy())
-        # if path_l >= prev_path_l:
-        #     history_squares.append(squares.copy())
-        #     history_paths.append(path.copy())
-        #     break
-        # else:
-        #     prev_path_l = path_l
         apply_step(squares, derivatives, learning_step)
 
-    # plot_squares = tuple()
-    # for sq in squares:
-    #     plot_squares += square_to_plot(sq)
-    # print("STATS:\n    Squares: {}\n    Allow  overlapping: {}\n    Generated values: {}".format(MAX_SQUARES,
-    #                                                                                              allow_overlapping,
-    #                                                                                              __global_generation_counter))
-    # plt.plot(*plot_squares)
-    # plt.axis([MINX, MAXX, MINY, MAXY])
-    # plt.show()
-
-    # # rotated_squares = []
-    # # for sq in squares:
-    # #     rotated_squares.append(rotate_square(sq, 25))
-    # # squares = rotated_squares
-    # plot_squares = tuple()
-    # for sq in squares:
-    #     plot_squares += square_to_plot(sq)
-    # # print("STATS:\n    Squares: {}\n    Allow  overlapping: {}\n    Generated values: {}".format(MAX_SQUARES,
-    # #                                                                                              allow_overlapping,
-    # #                                                                                              __global_generation_counter))
-    # plt.plot(*plot_squares)
-    # path_l, path = find_path(squares, 0.0, 0.0, 1.0, 1.0)
-    # print(path_l)
-    # path = np.array(path)
-    # plt.plot(path[:, 0], path[:, 1])
-    # plt.show()
-    # fig = plt.figure()
-    # plt.xlim(-10, 10)
-    # plt.ylim(-10, 10)
     fig = plt.figure()
     # plt.axis([MINX, MAXX, MINY, MAXY])
     ax = plt.axes(xlim=(MINX, MAXX), ylim=(MINY, MAXY))
@@ -412,50 +371,6 @@ def main():
 
     ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=40, repeat_delay=1000)
     plt.show()
-
-    # n = 14
-    # m = 14
-    # k = 4
-    # step_size = 0.01
-    # steps = 150
-    #
-    # old_cor = generate_coordinates(n)
-    # new_cor = generate_coordinates(m)
-    # all_cor = np.append(old_cor, new_cor, axis=0)
-    # history = []
-    # history_iters = []
-    # history.append(np.array(all_cor))
-    # # Gradient descent
-    # print(all_cor)
-    # for i in range(steps):
-    #     # print(all_cor)
-    #     derivatives = get_derivatives(all_cor, m, k)
-    #     print("DD", derivatives)
-    #     dtd = distance_to_ideal(all_cor, m, n)
-    #     history_iters.append(dtd)
-    #     print("Distance to ideal: ", dtd)
-    #     step(all_cor, derivatives, step_size)
-    #     history.append(np.array(all_cor))
-    #
-    # print(all_cor)
-    # history = np.array(history)
-    # plt.plot(history_iters)
-    # plt.show()
-    # fig = plt.figure()
-    # plt.xlim(-10, 10)
-    # plt.ylim(-10, 10)
-    # graphog, = plt.plot([], [], 'xb')
-    # graphnew, = plt.plot([], [], 'or')
-    # print(history.shape)
-    #
-    # def animate(i):
-    #     graphog.set_data(history[i, :-m, 0], history[i, :-m, 1])
-    #     graphnew.set_data(history[i, -m:, 0], history[i, -m:, 1])
-    #     return graphog
-    #
-    #
-    # ani = FuncAnimation(fig, animate, frames=steps, interval=20)
-    # plt.show()
 
 
 if __name__ == "__main__":
