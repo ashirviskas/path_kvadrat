@@ -215,13 +215,13 @@ def get_square_trace_vector(current_point, next_point, squares):
         index = int(closest_intersected[0][0])
         len1 = np.sqrt(np.sum((intersected_walls[index][0] - current_point) ** 2))
         len2 = np.sqrt(np.sum((intersected_walls[index][1] - current_point) ** 2))
-        if abs(len1) < 0.001 or abs(len2) < 0.001:
+        if abs(len1) < 1e-9 or abs(len2) < 1e-9:
             index = int(closest_intersected[1][0])
         new_wall = np.array(intersected_walls[index])
         direction0 = intersected_points[index] - new_wall[0]
         direction1 = intersected_points[index] - new_wall[1]
-        new_wall[0] -= direction0 * 0.0001
-        new_wall[1] -= direction1 * 0.0001
+        new_wall[0] -= direction0 * 1e-7
+        new_wall[1] -= direction1 * 1e-7
         return intersected_points[index], new_wall
     else:
         return next_point, None
@@ -230,7 +230,8 @@ def get_square_trace_vector(current_point, next_point, squares):
 def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec_d = 0):
     if x0 == x1 and y0 == y1:
         return path_length, np.array(path)
-    # print(rec_d)
+    # if rec_d > 7:
+    #     return None, None
     current_point = np.array([x0, y0])
     destination_point = np.array([x1, y1])
     path.append(current_point)
@@ -239,9 +240,22 @@ def find_path(squares, x0, y0, x1, y1, path, step_size=0.001, path_length=0, rec
     if wall is not None:
         path_len_leftest = np.sqrt(np.sum((wall[0] - current_point) ** 2)) + path_length
         path_len_rightest = np.sqrt(np.sum((wall[1] - current_point) ** 2)) + path_length
-
-        path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_leftest, rec_d=rec_d + 1)
-        path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_rightest, rec_d=rec_d+1)
+        if rec_d > 2:
+            left_rec_points = np.sqrt(np.sum((wall[1] - destination_point) ** 2))
+            right_rec_points = np.sqrt(np.sum((wall[0] - destination_point) ** 2))
+            if left_rec_points < right_rec_points:
+                path_len_right, path_right = None, None
+                path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0],
+                                                     destination_point[1], path.copy(), path_length=path_len_rightest,
+                                                     rec_d=rec_d + 1)
+            else:
+                path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0],
+                                                       destination_point[1], path.copy(), path_length=path_len_leftest,
+                                                       rec_d=rec_d + 1)
+                path_len_left, path_left = None, None
+        else:
+            path_len_right, path_right = find_path(squares, wall[0, 0], wall[0, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_leftest, rec_d=rec_d + 1)
+            path_len_left, path_left = find_path(squares, wall[1, 0], wall[1, 1], destination_point[0], destination_point[1], path.copy(), path_length=path_len_rightest, rec_d=rec_d+1)
 
         if path_len_left is not None and path_len_right is not None:
             if path_len_left < path_len_right:
@@ -279,7 +293,7 @@ def get_partial_derivative(squares, x0, y0, x1, y1, explore_step=0.001, learning
 def apply_step(squares, partial_derivative, learning_stepsize = 0.1):
     for i in range(len(squares)):
         d = partial_derivative[i]
-        if d > 0.0:
+        if abs(d) > 0.0:
             squares[i] = rotate_square(squares[i], d * learning_stepsize)
 
 
@@ -311,11 +325,10 @@ def main():
     squares = np.array(squares)
     max_steps = 500
     explore_step = 0.01
-    learning_step = 0.3
+    learning_step = 300
     history_squares = list()
     history_paths = list()
     history_step = 1
-    prev_path_l = 100
 
     plot_squares = tuple()
     for sq in squares:
@@ -329,10 +342,11 @@ def main():
     path = np.array(path)
     plt.plot(path[:, 0], path[:, 1])
     plt.show()
-
     for i in range(max_steps):
         derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step,
                                                            learning_step=learning_step)
+        if np.sum(np.abs(derivatives)) < 1e-4:
+            break
         print(path_l)
         if i % history_step == 0:
             history_squares.append(squares.copy())
