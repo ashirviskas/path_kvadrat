@@ -342,6 +342,8 @@ def main():
     path = np.array(path)
     plt.plot(path[:, 0], path[:, 1])
     plt.show()
+    history_squares.append(squares.copy())
+    history_paths.append(path.copy())
     for i in range(max_steps):
         derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step,
                                                            learning_step=learning_step)
