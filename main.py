@@ -18,7 +18,7 @@ MINX = MINY = 0
 MAXX = MAXY = 1
 DEFAULT_SIDE = 0.1
 DEFAULT_SAFETY_MARGIN = DEFAULT_SIDE * sqrt(2)
-MAX_SQUARES = 8
+MAX_SQUARES = 20
 
 __global_generation_counter = 0
 
@@ -189,6 +189,7 @@ def segment_intersect(line1, line2):
 
     return intersection_pt
 
+
 def get_square_trace_vector(current_point, next_point, direction_v, square):
     walls = list()
     walls.append((square[0], square[1]))
@@ -202,13 +203,13 @@ def get_square_trace_vector(current_point, next_point, direction_v, square):
         intersect_point = segment_intersect(l, current_step)
         if intersect_point is not None:
             # print(i)
-            direction1 = np.array(square[i]) - np.array(square[(i + 1) % 4])
-            direction2 = np.array(square[(i + 1) % 4]) - np.array(square[i])
-            if np.sqrt(np.sum((direction1 - direction_v) ** 2)) < np.sqrt(np.sum((direction2 - direction_v) ** 2)):
-                return direction1
+            direction1 = np.array(intersect_point) - np.array(square[(i + 1) % 4])
+            direction2 = np.array(intersect_point) - np.array(square[i])
+            if not np.sqrt(np.sum((direction1 - direction_v) ** 2)) < np.sqrt(np.sum((direction2 - direction_v) ** 2)):
+                return direction1, intersect_point, np.array(square[(i + 1) % 4])
             else:
-                return direction2
-    return direction_v
+                return direction2, intersect_point, np.array(square[i])
+    return direction_v, None, None
 
 
 def find_path(squares, x0, y0, x1, y1, step_size=0.001):
@@ -228,9 +229,16 @@ def find_path(squares, x0, y0, x1, y1, step_size=0.001):
         s_intersected = is_point_in_squares((next_point[0], next_point[1]), squares)
         if s_intersected is not None:
             # next_point = np.array([current_point[0] + (random() - 0.5) * step_size, current_point[1] + (random() - 0.5) * step_size])
-            square_wall_trace_v = get_square_trace_vector(current_point, next_point, direction_v, s_intersected)
+            square_wall_trace_v, intersect_point, wall_end = get_square_trace_vector(current_point, next_point, direction_v, s_intersected)
             # next_point -= current_point + direction_v * step_size
-            next_point = current_point + square_wall_trace_v * step_size
+            if intersect_point is not None:
+                next_point = intersect_point #- direction_v * step_size / 100
+                path_length += np.sqrt(np.sum((next_point - current_point) ** 2))
+                path.append(next_point)
+                current_point = next_point
+                next_point = wall_end - square_wall_trace_v * 0.00001
+            else:
+                next_point = current_point + square_wall_trace_v * step_size
             # s_intersected = is_point_in_squares((next_point[0], next_point[1]), squares)
 
 
@@ -290,9 +298,9 @@ if __name__ == "__main__":
         # square = rotate_square(square, 1)
         squares.append(square)
 
-    max_steps = 100
-    explore_step = 0.003
-    learning_step = 0.8
+    max_steps = 500
+    explore_step = 0.01
+    learning_step = 0.3
     history_squares = list()
     history_paths = list()
     history_step = 1
@@ -376,7 +384,7 @@ if __name__ == "__main__":
         return [graph_squares, graphog]
 
 
-    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=20, repeat_delay=1000)
+    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=10, repeat_delay=1000)
     plt.show()
 
     # n = 14
