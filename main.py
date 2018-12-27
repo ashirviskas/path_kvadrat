@@ -16,7 +16,7 @@ MINX = MINY = 0
 MAXX = MAXY = 1
 DEFAULT_SIDE = 0.1
 DEFAULT_SAFETY_MARGIN = DEFAULT_SIDE * sqrt(2)
-MAX_SQUARES = 20
+MAX_SQUARES = 10
 
 __global_generation_counter = 0
 
@@ -323,7 +323,7 @@ def main():
         # square = rotate_square(square, 1)
         squares.append(square)
     squares = np.array(squares)
-    max_steps = 500
+    max_steps = 300
     explore_step = 0.01
     learning_step = 300
     history_squares = list()
@@ -345,7 +345,7 @@ def main():
     for i in range(max_steps):
         derivatives, path_l, path = get_partial_derivative(squares, 0.0, 0.0, 1.0, 1.0, explore_step=explore_step,
                                                            learning_step=learning_step)
-        if np.sum(np.abs(derivatives)) < 1e-4:
+        if np.sum(np.abs(derivatives)) < 1e-3:
             break
         print(path_l)
         if i % history_step == 0:
@@ -408,7 +408,7 @@ def main():
             graph_squares[i].set_data(np.append(sq_n[:, 0], sq_n[0, 0]), np.append(sq_n[:, 1], sq_n[0, 1]))
         return [graph_squares, graphog]
 
-    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=10, repeat_delay=1000)
+    ani = FuncAnimation(fig, animate, frames=len(history_paths), interval=40, repeat_delay=1000)
     plt.show()
 
     # n = 14
